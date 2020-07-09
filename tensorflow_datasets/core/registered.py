@@ -25,6 +25,7 @@ import contextlib
 import inspect
 import posixpath
 import re
+import sys
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Type
 
 from absl import flags
@@ -37,6 +38,12 @@ from tensorflow_datasets.core import naming
 from tensorflow_datasets.core.utils import gcs_utils
 from tensorflow_datasets.core.utils import py_utils
 from tensorflow_datasets.core.utils import version
+
+# TODO(py2): Cleanup once Python 2 support is dropped
+if sys.version_info[0] == 3:
+  from tensorflow_datasets.core import community  # pylint: disable=g-import-not-at-top
+else:
+  community = Any
 
 
 FLAGS = flags.FLAGS
@@ -180,9 +187,13 @@ class RegisteredDataset(abc.ABCMeta):
     return builder_cls
 
 
-def list_builders():
+def list_builders(with_community_datasets=True):
   """Returns the string names of all `tfds.core.DatasetBuilder`s."""
-  return sorted(list(_DATASET_REGISTRY))
+  ds_names = sorted(_DATASET_REGISTRY)
+  if with_community_datasets and community.default_register.is_available():
+    # Append community datasets
+    ds_names = ds_names + sorted(community.default_register.dataset_specs)
+  return ds_names
 
 
 def builder_cls(name: str):
